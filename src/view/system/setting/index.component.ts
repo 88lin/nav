@@ -141,7 +141,7 @@ export default class SystemSettingComponent {
           shortcutThemeImages: this.settings.shortcutThemeImages,
           sideThemeImages: this.settings.sideThemeImages,
           mirrorList: this.settings.mirrorList.filter(item => (
-            item.url && item.name
+            item['url'] && item['name']
           ))
         }
 

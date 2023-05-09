@@ -125,7 +125,7 @@ git clone --depth=1 https://github.com/xjh22222228/nav.git
 
 cd nav
 
-# Installation dependencies
+# Installation dependencies(Node:v18)
 yarn
 
 # Start
