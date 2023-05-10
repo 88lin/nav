@@ -1,4 +1,4 @@
-export default {
+const zhCN: Record<string, string> = {
   _webTitle: '发现导航',
   _uncategorized: '未分类',
   _modifySuccess: '修改成功！',
@@ -149,3 +149,5 @@ export default {
   _angleMark: "角标设置",
   _logout: '登出'
 }
+
+export default zhCN;

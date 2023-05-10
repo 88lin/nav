@@ -1,4 +1,5 @@
-export default {
+
+const english: Record<string, string> = {
   _webTitle: 'Discovery Navigation',
   _uncategorized: 'Unclassified',
   _modifySuccess: 'Modification succeeded!',
@@ -149,3 +150,5 @@ export default {
   _angleMark: "Angle Mark",
   _logout: 'Logout'
 }
+
+export default english
