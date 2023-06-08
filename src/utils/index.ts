@@ -171,7 +171,7 @@ function randomColor(): string {
   return c.slice(0, 7)
 }
 
-let randomTimer
+let randomTimer: NodeJS.Timer
 export function randomBgImg() {
   if (isDark()) return
 
@@ -207,10 +207,10 @@ export function queryString(): {
   const { href } = window.location
   const search = href.split('?')[1] || ''
   const parseQs = qs.parse(search)
-  let id = parseInt(parseQs.id) || 0
-  let page = parseInt(parseQs.page) || 0
+  let id = parseInt(parseQs['id'] as string) || 0
+  let page = parseInt(parseQs['page'] as string) || 0
 
-  if (parseQs.id === undefined && parseQs.page === undefined) {
+  if (parseQs['id'] === undefined && parseQs['page'] === undefined) {
     try {
       const location = window.localStorage.getItem(STORAGE_KEY_MAP.location)
       if (location) {
@@ -235,7 +235,7 @@ export function queryString(): {
 
   return {
     ...parseQs,
-    q: parseQs.q || '',
+    q: (parseQs['q'] || '') as string,
     id,
     page,
   }
