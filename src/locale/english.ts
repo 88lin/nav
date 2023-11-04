@@ -1,4 +1,5 @@
-export default {
+
+const english: Record<string, string> = {
   _webTitle: 'Discovery Navigation',
   _uncategorized: 'Unclassified',
   _modifySuccess: 'Modification succeeded!',
@@ -74,7 +75,7 @@ export default {
   _importChrome: 'Import from Chrome bookmarks',
   _allContentMsg1: '1. After setting all data, click "synchronize to remote end" and drag the table to sort',
   _allContentMsg2: '2. Website category needs to be maintained manually,',
-  _updateLogo: 'Replace logo, PNG, 200x200',
+  _updateLogo: 'Replace logo, only PNG is supported, 200x200',
   _tagName: 'Category name',
   _onlyOwnVisible: 'Only Self',
   _createAt: 'Create At',
@@ -128,6 +129,7 @@ export default {
   _appTheme: 'App Theme',
   _keywords: 'Keywords',
   _footHtml: 'Foot HTML',
+  _headHtml: 'Head HTML',
   _showWeather: 'Show weather',
   _weatherTip: 'Currently only the "Shortcut" theme is supported',
   _setSaveTip: 'Note: after saving successfully, you need to wait at least 5 minutes for the build time to take effect!',
@@ -146,6 +148,10 @@ export default {
   _mirrorAddr: "Mirror Address",
   _mirrorName: "Mirror Name",
   _showRate: "Show rate",
+  _showCopy: "显示卡片复制",
+  _showShare: "显示卡片分享",
   _angleMark: "Angle Mark",
   _logout: 'Logout'
 }
+
+export default english

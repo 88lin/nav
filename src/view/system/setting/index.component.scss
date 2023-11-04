@@ -1,11 +1,11 @@
 #file {
   cursor: pointer;
+  input {
+    display: none;
+  }
   .logo {
     width: 50px;
     height: 50px;
-  }
-  input {
-    width: 518px;
   }
 }
 .preview {
@@ -35,4 +35,9 @@
   ::ng-deep .anticon {
     font-size: 30px;
   }
+}
+.logo-input {
+  display: block !important;
+  width: 518px;
+  margin-top: 5px;
 }
