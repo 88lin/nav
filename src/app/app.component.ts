@@ -8,42 +8,53 @@ import { en_US, NzI18nService, zh_CN } from 'ng-zorro-antd/i18n'
 import { getLocale } from 'src/locale'
 import { settings } from 'src/store'
 import { verifyToken } from 'src/services'
-import { getToken, removeToken } from 'src/utils/user'
+import { getToken, userLogout, isLogin } from 'src/utils/user'
+import { NzMessageService } from 'ng-zorro-antd/message'
+import { NzNotificationService } from 'ng-zorro-antd/notification'
+import Alert from './alert-event'
 
 @Component({
   selector: 'app-xiejiahe',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-  constructor (
+  isLogin: boolean = isLogin
+
+  constructor(
     private router: Router,
     private activatedRoute: ActivatedRoute,
-    private i18n: NzI18nService
-  ) {}
+    private i18n: NzI18nService,
+    private message: NzMessageService,
+    private notification: NzNotificationService
+  ) {
+    new Alert(message, notification)
+  }
 
   ngOnInit() {
     this.goRoute()
     this.activatedRoute.queryParams.subscribe(setLocation)
 
     if (getLocale() === 'zh-CN') {
-      this.i18n.setLocale(zh_CN);
+      this.i18n.setLocale(zh_CN)
     } else {
-      this.i18n.setLocale(en_US);
+      this.i18n.setLocale(en_US)
     }
 
     const token = getToken()
     if (token) {
       verifyToken(token).catch(() => {
-        removeToken()
-        location.reload()
+        userLogout()
+        setTimeout(() => {
+          location.reload()
+        }, 3000)
       })
     }
   }
 
   goRoute() {
     // is App
-    if ('ontouchstart' in window) {
+    if (settings.appTheme !== 'Current' && 'ontouchstart' in window) {
       const url = (this.router.url.split('?')[0] || '').toLowerCase()
       const { page, id, q } = queryString()
       const queryParams = { page, id, q }
