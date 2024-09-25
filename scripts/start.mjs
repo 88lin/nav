@@ -335,10 +335,10 @@ try {
   const defImgs = [
     {
       src: 'https://gcore.jsdelivr.net/gh/xjh22222228/nav-image@image/nav-1717494364392-ad.jpg',
-      url: 'https://haokawx.lot-ml.com/Product/index/454266',
+      url: 'https://simhaoka.com/phone/index?id=7D26597D429AB2941A5743A8008DF8FD',
     },
     {
-      src: 'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/img/10.png',
+      src: 'https://cdn.jsdelivr.net/gh/88lin/PicX@master/微信图片_20240925164138.7jmo9r4bsnk0.jpg',
       url: '',
     },
   ]
