@@ -2,11 +2,13 @@
 // Copyright @ 2018-present xiejiahe. All rights reserved.
 // See https://github.com/xjh22222228/nav
 
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core'
+import { Component, Input } from '@angular/core'
 import { IComponentProps } from 'src/types'
+import { SafeHtmlPipe } from 'src/pipe/safeHtml.pipe'
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [SafeHtmlPipe],
   selector: 'app-html',
   templateUrl: './index.component.html',
   styleUrls: ['./index.component.scss'],
