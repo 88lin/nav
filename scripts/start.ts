@@ -7,7 +7,7 @@ import path from 'path'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
-import defaultDb from './db.mjs'
+import defaultDb from './db'
 import yaml from 'js-yaml'
 import LZString from 'lz-string'
 import {
@@ -18,58 +18,44 @@ import {
   TAG_ID_NAME2,
   TAG_ID_NAME3,
   getWebCount,
-  setWeb,
+  setWebs,
   replaceJsdelivrCDN,
-} from './util.mjs'
+  PATHS,
+} from './utils'
+import {
+  ITagPropValues,
+  ISettings,
+  INavProps,
+  InternalProps,
+} from '../src/types/index'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.tz.setDefault('Asia/Shanghai')
 
-const PATHS = {
-  pkg: path.join('.', 'package.json'),
-  config: path.join('.', 'nav.config.yaml'),
-  data: {
-    db: path.join('.', 'data', 'db.json'),
-    internal: path.join('.', 'data', 'internal.json'),
-    settings: path.join('.', 'data', 'settings.json'),
-    tag: path.join('.', 'data', 'tag.json'),
-    search: path.join('.', 'data', 'search.json'),
-    component: path.join('.', 'data', 'component.json'),
-  },
-}
-
-const DEFAULT_IMAGES = {
-  banner1:
-    'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/nav/banner1.jpg',
-  banner2:
-    'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/nav/banner2.jpg',
-  background:
-    'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/nav/background.jpg',
-  favicon:
-    'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/nav/logo.svg',
-}
-
 const initConfig = () => {
   const pkgJson = JSON.parse(fs.readFileSync(PATHS.pkg).toString())
-  const config = yaml.load(fs.readFileSync(PATHS.config))
+  const config = yaml.load(fs.readFileSync(PATHS.config).toString()) as Record<
+    string,
+    any
+  >
 
   return {
     version: pkgJson.version,
-    gitRepoUrl: config.gitRepoUrl,
-    imageRepoUrl: config.imageRepoUrl,
-    branch: config.branch,
-    hashMode: config.hashMode,
-    address: config.address,
-    email: config.email,
-    port: config.port,
+    gitRepoUrl: config['gitRepoUrl'],
+    imageRepoUrl: config['imageRepoUrl'],
+    branch: config['branch'],
+    hashMode: config['hashMode'],
+    address: config['address'],
+    email: config['email'],
+    port: config['port'],
     datetime: dayjs.tz().format('YYYY-MM-DD HH:mm'),
-  }
+  } as const
 }
 
-const readDb = () => {
+const readDb = (): INavProps[] => {
   try {
-    const strings = fs.readFileSync(PATHS.data.db).toString().trim()
+    const strings = fs.readFileSync(PATHS.db).toString().trim()
     if (!strings) throw new Error('empty')
 
     return strings[0] === '['
@@ -81,20 +67,6 @@ const readDb = () => {
   }
 }
 
-// 初始化设置
-const initSettings = (settings, configJson) => {
-  const defaultSettings = {
-    favicon: DEFAULT_IMAGES.favicon,
-    language: 'zh-CN',
-    loading: 'random',
-    runtime: dayjs.tz().valueOf(),
-    allowCollect: true,
-    email: configJson.email || '',
-  }
-
-  return { ...defaultSettings, ...settings }
-}
-
 const main = async () => {
   const configJson = initConfig()
   fs.writeFileSync(
@@ -103,26 +75,25 @@ const main = async () => {
   )
 
   const db = readDb()
-  let internal = {}
-  let settings = {}
-  let tags = []
-  let search = []
-  let components = []
+  let internal = {} as InternalProps
+  let settings = {} as ISettings
+  let tags: ITagPropValues[] = []
+  let search: any[] = []
+  let components: Record<string, any>[] = []
 
   try {
-    internal = JSON.parse(fs.readFileSync(PATHS.data.internal).toString())
-    settings = JSON.parse(fs.readFileSync(PATHS.data.settings).toString())
-    tags = JSON.parse(fs.readFileSync(PATHS.data.tag).toString())
-    search = JSON.parse(fs.readFileSync(PATHS.data.search).toString())
+    internal = JSON.parse(fs.readFileSync(PATHS.internal).toString())
+    settings = JSON.parse(fs.readFileSync(PATHS.settings).toString())
+    tags = JSON.parse(fs.readFileSync(PATHS.tag).toString())
+    search = JSON.parse(fs.readFileSync(PATHS.search).toString())
   } catch {}
 
   try {
-    components = JSON.parse(fs.readFileSync(PATHS.data.component).toString())
+    components = JSON.parse(fs.readFileSync(PATHS.component).toString())
   } catch {
   } finally {
-    /** @type {import('./src/types/index.ts').ComponentType} */
-    let idx = components.findIndex((item) => item.type === 1)
-    const calendar = {
+    let idx = components.findIndex((item) => item['type'] === 1)
+    const calendar: Record<string, any> = {
       type: 1,
       id: -1,
       topColor: '#ff5a5d',
@@ -137,8 +108,8 @@ const main = async () => {
       components.push(calendar)
     }
     //
-    idx = components.findIndex((item) => item.type === 2)
-    const offWork = {
+    idx = components.findIndex((item) => item['type'] === 2)
+    const offWork: Record<string, any> = {
       type: 2,
       id: -2,
       workTitle: '距离下班还有',
@@ -155,8 +126,8 @@ const main = async () => {
       components.push(offWork)
     }
     //
-    idx = components.findIndex((item) => item.type === 4)
-    const image = {
+    idx = components.findIndex((item) => item['type'] === 4)
+    const image: Record<string, any> = {
       type: 4,
       id: -4,
       url: 'https://gcore.jsdelivr.net/gh/xjh22222228/public@gh-pages/nav/component1.jpg',
@@ -168,13 +139,16 @@ const main = async () => {
         ...image,
         ...components[idx],
       }
-      components[idx].url = replaceJsdelivrCDN(components[idx].url, settings)
+      components[idx]['url'] = replaceJsdelivrCDN(
+        components[idx]['url'],
+        settings
+      )
     } else {
       components.push(image)
     }
     //
-    idx = components.findIndex((item) => item.type === 5)
-    const countdown = {
+    idx = components.findIndex((item) => item['type'] === 5)
+    const countdown: Record<string, any> = {
       type: 5,
       id: -5,
       topColor: 'linear-gradient(90deg, #FAD961 0%, #F76B1C 100%)',
@@ -190,13 +164,16 @@ const main = async () => {
         ...countdown,
         ...components[idx],
       }
-      components[idx].url = replaceJsdelivrCDN(components[idx].url, settings)
+      components[idx]['url'] = replaceJsdelivrCDN(
+        components[idx]['url'],
+        settings
+      )
     } else {
       components.push(countdown)
     }
     //
-    idx = components.findIndex((item) => item.type === 3)
-    const runtime = {
+    idx = components.findIndex((item) => item['type'] === 3)
+    const runtime: Record<string, any> = {
       type: 3,
       id: -3,
       title: '已稳定运行',
@@ -210,11 +187,13 @@ const main = async () => {
       components.push(runtime)
     }
     //
-    idx = components.findIndex((item) => item.type === 6)
-    const html = {
+    idx = components.findIndex((item) => item['type'] === 6)
+    const html: Record<string, any> = {
       type: 6,
       id: -6,
       html: '你好，发现导航',
+      width: 160,
+      bgColor: '#fff',
     }
     if (idx >= 0) {
       components[idx] = {
@@ -224,8 +203,8 @@ const main = async () => {
     } else {
       components.push(html)
     }
-    idx = components.findIndex((item) => item.type === 7)
-    const holiday = {
+    idx = components.findIndex((item) => item['type'] === 7)
+    const holiday: Record<string, any> = {
       type: 7,
       id: -7,
       items: [],
@@ -238,7 +217,7 @@ const main = async () => {
     } else {
       components.push(holiday)
     }
-    fs.writeFileSync(PATHS.data.component, JSON.stringify(components))
+    fs.writeFileSync(PATHS.component, JSON.stringify(components))
   }
 
   {
@@ -297,7 +276,7 @@ const main = async () => {
           isInner: false,
         },
       ]
-      fs.writeFileSync(PATHS.data.search, JSON.stringify(search), {
+      fs.writeFileSync(PATHS.search, JSON.stringify(search), {
         encoding: 'utf-8',
       })
     }
@@ -315,7 +294,6 @@ const main = async () => {
         id: TAG_ID1,
         name: isEn ? 'Chinese' : TAG_ID_NAME1,
         color: '#2db7f5',
-        createdAt: '',
         desc,
         isInner: true,
       })
@@ -326,7 +304,6 @@ const main = async () => {
         id: TAG_ID2,
         name: isEn ? 'English' : TAG_ID_NAME2,
         color: '#f50',
-        createdAt: '',
         desc,
         isInner: true,
       })
@@ -337,13 +314,12 @@ const main = async () => {
         id: TAG_ID3,
         name: TAG_ID_NAME3,
         color: '#108ee9',
-        createdAt: '',
         desc,
         isInner: true,
       })
     }
     tags = tags.filter((item) => item.name && item.id)
-    fs.writeFileSync(PATHS.data.tag, JSON.stringify(tags), {
+    fs.writeFileSync(PATHS.tag, JSON.stringify(tags), {
       encoding: 'utf-8',
     })
   }
@@ -361,7 +337,7 @@ const main = async () => {
     settings.language ||= 'zh-CN'
     settings.loading ??= 'random'
     settings.runtime ??= dayjs.tz().valueOf()
-    settings.allowCollect ??= true
+    settings.userActions ||= []
     settings.email ||= configJson.email || ''
     settings.showGithub ??= true
     settings.showLanguage ??= true
@@ -497,19 +473,17 @@ const main = async () => {
       item.src = replaceJsdelivrCDN(item.src, settings)
       return item
     })
-    fs.writeFileSync(PATHS.data.settings, JSON.stringify(settings), {
+    fs.writeFileSync(PATHS.settings, JSON.stringify(settings), {
       encoding: 'utf-8',
     })
   }
-
-  settings = initSettings(settings, configJson)
 
   const { userViewCount, loginViewCount } = getWebCount(db)
   internal.userViewCount = userViewCount < 0 ? loginViewCount : userViewCount
   internal.loginViewCount = loginViewCount
 
-  fs.writeFileSync(PATHS.data.internal, JSON.stringify(internal))
-  fs.writeFileSync(PATHS.data.db, JSON.stringify(setWeb(db, settings, tags)))
+  fs.writeFileSync(PATHS.internal, JSON.stringify(internal))
+  fs.writeFileSync(PATHS.db, JSON.stringify(setWebs(db, settings, tags)))
 }
 
 main().catch(console.error)

@@ -1,7 +1,8 @@
 <div
   class="card-container progrcode"
-  *ngIf="dataSource.desc && dataSource.desc[0] === '!'; else other"
-  [innerHTML]="html | safeHtml"
+  *ngIf="isCode; else other"
+  [innerHTML]="description | safeHtml"
+  #root
 ></div>
 
 <ng-template #other>
@@ -21,7 +22,7 @@
 
       <div
         class="breadcrumb1 ellipsis"
-        *ngIf="searchKeyword && dataSource?.breadcrumb"
+        *ngIf="commonService.searchKeyword && dataSource?.breadcrumb"
       >
         <span *ngFor="let n of dataSource.breadcrumb; let idx = index"
           >{{ n
@@ -85,7 +86,7 @@
         ></div>
         <div
           class="action-item dark-border-color"
-          *ngIf="isLogin"
+          *ngIf="isLogin || permissions.edit"
           nz-tooltip
           [nzTooltipTitle]="$t('_edit')"
           nz-icon
@@ -95,7 +96,7 @@
         ></div>
         <div
           class="action-item dark-border-color"
-          *ngIf="isLogin && indexs.length === 4"
+          *ngIf="isLogin"
           nz-tooltip
           [nzTooltipTitle]="$t('_move')"
           nz-icon
@@ -105,7 +106,7 @@
         ></div>
         <div
           class="action-item dark-border-color"
-          *ngIf="isLogin"
+          *ngIf="isLogin || permissions.del"
           nz-popconfirm
           nzPopconfirmPlacement="rightTop"
           nzOkType="danger"
@@ -137,7 +138,7 @@
 
       <div
         class="breadcrumb1 ellipsis"
-        *ngIf="searchKeyword && dataSource?.breadcrumb"
+        *ngIf="commonService.searchKeyword && dataSource?.breadcrumb"
       >
         <span *ngFor="let n of dataSource.breadcrumb; let idx = index"
           >{{ n
@@ -181,7 +182,7 @@
 
       <div
         class="breadcrumb1 ellipsis"
-        *ngIf="searchKeyword && dataSource?.breadcrumb"
+        *ngIf="commonService.searchKeyword && dataSource?.breadcrumb"
       >
         <span *ngFor="let n of dataSource.breadcrumb; let idx = index"
           >{{ n
@@ -221,7 +222,7 @@
           <div
             class="top dark-border-color"
             [class.border-transparent]="
-              !dataSource.desc && !dataSource.tags?.length
+              !dataSource.desc && !dataSource.tags.length
             "
           >
             <app-logo
@@ -243,7 +244,12 @@
               [innerHTML]="dataSource.desc"
             ></div>
             <tag-list
-              *ngIf="dataSource.tags?.length || isLogin"
+              *ngIf="
+                dataSource.tags?.length ||
+                isLogin ||
+                permissions.edit ||
+                permissions.del
+              "
               [data]="dataSource.tags"
               [action]="true"
               (onDelete)="confirmDel()"
@@ -271,7 +277,7 @@
 
       <div
         class="breadcrumb1 ellipsis"
-        *ngIf="searchKeyword && dataSource?.breadcrumb"
+        *ngIf="commonService.searchKeyword && dataSource?.breadcrumb"
       >
         <span *ngFor="let n of dataSource.breadcrumb; let idx = index"
           >{{ n
@@ -308,7 +314,12 @@
         <div class="rate2" *ngIf="settings.showRate">{{ getRate }}</div>
         <tag-list
           [data]="dataSource.tags"
-          *ngIf="dataSource.tags?.length || isLogin"
+          *ngIf="
+            dataSource.tags?.length ||
+            isLogin ||
+            permissions.edit ||
+            permissions.del
+          "
           [action]="true"
           (onDelete)="confirmDel()"
           (onEdit)="openEditWebMoal()"
