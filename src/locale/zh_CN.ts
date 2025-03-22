@@ -289,6 +289,12 @@ const zhCN: Record<string, any> = {
   _repeatTip: '该分类下可能存在重复URL',
   _tag: '标签',
   _translate: '翻译',
+  _searchRes: '搜索结果',
+  _class: '分类',
+  _quote: '引用',
+  _poster: '海报',
+  _screenshot: '截图',
+  _imgPlaceholder: '应用在海报卡片',
 }
 
 export default zhCN

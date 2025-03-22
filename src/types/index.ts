@@ -37,7 +37,13 @@ export interface IComponentProps {
   [key: string]: any
 }
 
-export type ICardType = 'standard' | 'column' | 'example' | 'retro' | 'original'
+export type ICardType =
+  | 'standard'
+  | 'column'
+  | 'example'
+  | 'retro'
+  | 'original'
+  | 'poster'
 
 type OverType = 'overflow' | 'ellipsis'
 
@@ -65,37 +71,41 @@ export interface IWebTag {
 export interface BaseNavItem {
   id: number
   title: string
-  icon?: string
+  icon: string
   collapsed?: boolean
   ownVisible?: boolean
 }
 
 export interface IWebProps {
   id: number
-  __name__?: string // 搜索原name值
-  __desc__?: string
   name: string
   desc: string
   url: string
   icon: string
+  breadcrumb: string[]
+  tags: IWebTag[]
+  img?: string
+  rId?: number
+  __name__?: string // 搜索原name值
+  __desc__?: string
   rate?: number // 0-5
   top?: boolean
   topTypes?: number[]
   index?: number | string // sort
   ownVisible?: boolean
-  breadcrumb: string[]
   ok?: boolean
-  tags: IWebTag[]
   [key: string]: any
 }
 
 export interface INavThreeProp extends BaseNavItem {
   nav: IWebProps[]
+  rId?: number
   [key: string]: any
 }
 
 export interface INavTwoProp extends BaseNavItem {
   nav: INavThreeProp[]
+  rId?: number
   [key: string]: any
 }
 
@@ -106,11 +116,11 @@ export interface INavProps extends BaseNavItem {
 
 export interface ISearchProps {
   name: string
-  url?: string
-  icon: string | null
-  placeholder?: string
+  icon: string
   blocked: boolean
   isInner: boolean
+  url?: string
+  placeholder?: string
 }
 
 export interface ImageProps {

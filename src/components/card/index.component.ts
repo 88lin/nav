@@ -6,10 +6,11 @@ import { Component, Input, ViewChild, ElementRef } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { CommonModule } from '@angular/common'
 import { isLogin, getPermissions } from 'src/utils/user'
-import { copyText, getTextContent } from 'src/utils'
+import { copyText, getTextContent, randomColor, randomInt } from 'src/utils'
 import { parseHtmlWithContent, parseLoadingWithContent } from 'src/utils/utils'
-import { setWebsiteList, deleteWebByIds } from 'src/utils/web'
-import { INavProps, IWebProps, ICardType, ActionType } from 'src/types'
+import { setWebsiteList } from 'src/utils/web'
+import type { INavProps, IWebProps, ICardType } from 'src/types'
+import { ActionType } from 'src/types'
 import { $t, isZhCN } from 'src/locale'
 import { settings, websiteList } from 'src/store'
 import { JumpService } from 'src/services/jump'
@@ -25,6 +26,7 @@ import { saveUserCollect } from 'src/api'
 import { NzMessageService } from 'ng-zorro-antd/message'
 import { CommonService } from 'src/services/common'
 import { CODE_SYMBOL } from 'src/constants/symbol'
+import { BreadcrumbComponent } from 'src/components/breadcrumb/index.component'
 import event from 'src/utils/mitt'
 
 @Component({
@@ -40,6 +42,7 @@ import event from 'src/utils/mitt'
     NzIconModule,
     NzPopconfirmModule,
     SafeHtmlPipe,
+    BreadcrumbComponent,
   ],
   selector: 'app-card',
   templateUrl: './index.component.html',
@@ -47,7 +50,7 @@ import event from 'src/utils/mitt'
 })
 export class CardComponent {
   @Input() dataSource!: IWebProps
-  @Input() cardStyle: ICardType = 'standard'
+  @Input() cardStyle!: ICardType
   @ViewChild('root', { static: false }) root!: ElementRef
 
   readonly $t = $t
@@ -59,6 +62,8 @@ export class CardComponent {
   copyPathDone = false
   description = ''
   isCode = false
+  isError = false
+  backgroundColor = ''
 
   constructor(
     public commonService: CommonService,
@@ -69,10 +74,19 @@ export class CardComponent {
   ngOnInit() {
     this.isCode = this.dataSource.desc?.[0] === CODE_SYMBOL
     this.description = parseLoadingWithContent(this.dataSource.desc)
+    if (this.cardStyle === 'poster') {
+      this.generateColor()
+    }
   }
 
   ngAfterViewInit() {
     this.parseDescription()
+  }
+
+  private generateColor() {
+    this.backgroundColor = `linear-gradient(${randomInt(
+      360
+    )}deg, ${randomColor()} 0%, ${randomColor()} 100%)`
   }
 
   private parseDescription() {
@@ -117,23 +131,27 @@ export class CardComponent {
       desc: getTextContent(this.dataSource.desc),
     }
     if (isLogin) {
-      if (await deleteWebByIds([params.id])) {
-        this.message.success($t('_delSuccess'))
-      }
+      this.commonService.deleteWebByIds([params.id], params)
     } else {
-      try {
-        await saveUserCollect({
-          data: {
-            ...params,
-            extra: {
-              type: ActionType.Delete,
+      event.emit('MODAL', {
+        nzTitle: $t('_confirmDel'),
+        nzContent: `ID: ${params.id}`,
+        nzWidth: 350,
+        nzOkType: 'primary',
+        nzOkDanger: true,
+        nzOkText: $t('_del'),
+        nzOnOk: async () => {
+          await saveUserCollect({
+            data: {
+              ...params,
+              extra: {
+                type: ActionType.Delete,
+              },
             },
-          },
-        })
-        this.message.success($t('_waitHandle'))
-      } catch (error: any) {
-        this.message.error(error.message)
-      }
+          })
+          this.message.success($t('_waitHandle'))
+        },
+      })
     }
   }
 
@@ -144,6 +162,9 @@ export class CardComponent {
   }
 
   get getRate(): string {
+    if (this.cardStyle !== 'column') {
+      return ''
+    }
     const rate = Number(this.dataSource.rate ?? 0)
     return rate > 0 ? `${rate.toFixed(1)}${isZhCN() ? '分' : ''}` : ''
   }

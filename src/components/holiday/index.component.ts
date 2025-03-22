@@ -4,7 +4,7 @@
 
 import { Component, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { IComponentProps } from 'src/types'
+import type { IComponentProps } from 'src/types'
 import { $t } from 'src/locale'
 import dayjs from 'dayjs'
 
@@ -18,13 +18,9 @@ import dayjs from 'dayjs'
 export class HolidayComponent {
   @Input() data!: IComponentProps
   items: any[] = []
-  $t = $t
+  readonly $t = $t
 
   constructor() {}
-
-  ngOnInit() {
-    this.init()
-  }
 
   ngOnChanges() {
     this.init()

@@ -3,7 +3,7 @@
 // See https://github.com/xjh22222228/nav
 import { Component, Input, EventEmitter, Output } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { IWebTag } from 'src/types'
+import type { IWebTag } from 'src/types'
 import { tagMap, settings } from 'src/store'
 import { JumpService } from 'src/services/jump'
 import { isLogin, getPermissions } from 'src/utils/user'
@@ -25,31 +25,30 @@ export class TagListComponent {
   @Output() onMove = new EventEmitter<void>()
   @Output() onEdit = new EventEmitter<void>()
 
-  $t = $t
-  isLogin = isLogin
-  tagMap = tagMap
-  permissions = getPermissions(settings)
+  readonly $t = $t
+  readonly isLogin = isLogin
+  readonly tagMap = tagMap
+  readonly permissions = getPermissions(settings)
 
   constructor(public jumpService: JumpService) {}
 
-  handleClick(e: any) {
+  private handleClick(e: any) {
     e.stopPropagation()
     e.preventDefault()
   }
 
   openEditWebMoal(e: any) {
-    e.stopPropagation()
-    e.preventDefault()
+    this.handleClick(e)
     this.onEdit.emit()
   }
 
-  confirmDel() {
+  confirmDel(e: any) {
+    this.handleClick(e)
     this.onDelete.emit()
   }
 
   openMoveWebModal(e: any) {
-    e.stopPropagation()
-    e.preventDefault()
+    this.handleClick(e)
     this.onMove.emit()
   }
 }

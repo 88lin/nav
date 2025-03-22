@@ -6,8 +6,17 @@ import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
 import getWebInfo from 'info-web'
 import path from 'node:path'
-import { INavProps, ISettings, ITagPropValues, IWebProps } from '../src/types'
+import type {
+  INavProps,
+  ISettings,
+  ITagPropValues,
+  IWebProps,
+} from '../src/types'
 import { SELF_SYMBOL } from '../src/constants/symbol'
+import {
+  replaceJsdelivrCDN,
+  removeTrailingSlashes,
+} from '../src/utils/pureUtils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -95,6 +104,7 @@ export function getWebCount(websiteList: INavProps[]): WebCountResult {
 
 let maxWebId = 0
 let maxClassId = 0
+let maxWebRid = 0
 
 function getMaxWebId(nav: any[]): void {
   function f(nav: any[]): void {
@@ -102,6 +112,9 @@ function getMaxWebId(nav: any[]): void {
       const item = nav[i]
       if (item.name && item.id > maxWebId) {
         maxWebId = item.id
+      }
+      if (item.rId && item.rId > maxWebRid) {
+        maxWebRid = item.rId
       }
       if (item.title && item.id > maxClassId) {
         maxClassId = item.id
@@ -118,6 +131,14 @@ function incrementWebId(id: number | string): number {
   id = Number.parseInt(id as string)
   if (!id || id < 0) {
     return ++maxWebId
+  }
+  return id
+}
+
+function incrementWebRId(id: number | string): number {
+  id = Number.parseInt(id as string)
+  if (id < 0) {
+    return ++maxWebRid
   }
   return id
 }
@@ -144,6 +165,9 @@ export function setWebs(
       delete item.ownVisible
     }
     item.id = incrementClassId(item.id)
+    if (item.rId < 0) {
+      item.rId = incrementWebRId(item.rId)
+    }
     item.icon = replaceJsdelivrCDN(item.icon, settings)
     item.nav ||= []
   }
@@ -176,7 +200,10 @@ export function setWebs(
                 breadcrumb.push(item.title, navItem.title, navItemItem.title)
                 breadcrumb = breadcrumb.filter(Boolean)
                 webItem.breadcrumb = breadcrumb
-                webItem.id = Math.trunc(incrementWebId(webItem.id))
+                webItem.id = incrementWebId(webItem.id)
+                if (webItem.rId) {
+                  webItem.rId = incrementWebRId(webItem.rId)
+                }
                 webItem.tags ||= []
                 webItem.rate ??= 5
                 webItem.top ??= false
@@ -186,10 +213,10 @@ export function setWebs(
                 webItem.desc ||= ''
                 webItem.icon ||= ''
                 webItem.icon = replaceJsdelivrCDN(webItem.icon, settings)
-                webItem.url = webItem.url.trim()
-                if (webItem.url.endsWith('/')) {
-                  webItem.url = webItem.url.slice(0, -1)
+                if (webItem.img) {
+                  webItem.img = replaceJsdelivrCDN(webItem.img, settings)
                 }
+                webItem.url = removeTrailingSlashes(webItem.url.trim())
                 webItem.name = webItem.name.trim().replace(/<b>|<\/b>/g, '')
                 webItem.desc = webItem.desc.trim().replace(/<b>|<\/b>/g, '')
 
@@ -476,19 +503,4 @@ export async function spiderWeb(
     errorUrlCount,
     time: diff,
   }
-}
-
-export function replaceJsdelivrCDN(
-  str: string = '',
-  settings: ISettings
-): string {
-  const cdn = settings?.gitHubCDN
-  if (!cdn) {
-    return str
-  }
-  str = str.replace('cdn.jsdelivr.net', cdn)
-  str = str.replace('testingcf.jsdelivr.net', cdn)
-  str = str.replace('img.jsdmirror.com', cdn)
-  str = str.replace('gcore.jsdelivr.net', cdn)
-  return str
 }
