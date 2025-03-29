@@ -6,12 +6,21 @@ import fs from 'fs'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
-import { writeSEO, writeTemplate, spiderWeb, PATHS } from './utils'
+import {
+  writeSEO,
+  writeTemplate,
+  spiderWeb,
+  PATHS,
+  getConfig,
+  fileWriteStream,
+} from './utils'
 import type { INavProps, ISettings } from '../src/types/index'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.tz.setDefault('Asia/Shanghai')
+
+const config = getConfig()
 
 const handleFileOperation = (operation: () => any): any => {
   try {
@@ -40,12 +49,14 @@ handleFileOperation(() => fs.writeFileSync(PATHS.html.write, html))
 
 let errorUrlCount = 0
 
-process.on('exit', () => {
+process.on('exit', async () => {
   settings.errorUrlCount = errorUrlCount
-  handleFileOperation(() => {
-    fs.writeFileSync(PATHS.settings, JSON.stringify(settings))
-    fs.writeFileSync(PATHS.db, JSON.stringify(db))
-  })
+  fs.writeFileSync(PATHS.settings, JSON.stringify(settings))
+  await fileWriteStream(PATHS.db, config.address ? [] : db)
+
+  if (config.address) {
+    await fileWriteStream(PATHS.serverdb, db)
+  }
   console.log('All success!')
 })
 

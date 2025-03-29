@@ -71,30 +71,31 @@ export async function getImageRepoInfo(data?: Record<string, any>) {
 
 // 获取自有部署内容
 export function getContentes() {
-  return http.post('/api/contents/get').then((res: any) => {
-    websiteList.splice(0, websiteList.length)
-    searchEngineList.splice(0, searchEngineList.length)
-    tagList.splice(0, tagList.length)
-    components.splice(0, components.length)
+  return http
+    .post('/api/contents/get', getDefaultRequestData())
+    .then((res: any) => {
+      websiteList.splice(0, websiteList.length)
+      searchEngineList.splice(0, searchEngineList.length)
+      tagList.splice(0, tagList.length)
+      components.splice(0, components.length)
 
-    internal.loginViewCount = res.data.internal.loginViewCount
-    internal.userViewCount = res.data.internal.userViewCount
-    websiteList.push(...res.data.webs)
-    tagList.push(...res.data.tags)
-    searchEngineList.push(...res.data.search)
-    components.push(...res.data.components)
-    const resSettings = res.data.settings as ISettings
-    for (const k in resSettings) {
-      // @ts-ignore
-      settings[k] = resSettings[k]
-    }
-    getTagMap()
-    event.emit('WEB_REFRESH')
-    return res
-  })
+      internal.loginViewCount = res.data.internal.loginViewCount
+      internal.userViewCount = res.data.internal.userViewCount
+      websiteList.push(...res.data.webs)
+      tagList.push(...res.data.tags)
+      searchEngineList.push(...res.data.search)
+      components.push(...res.data.components)
+      const resSettings = res.data.settings as ISettings
+      for (const k in resSettings) {
+        // @ts-ignore
+        settings[k] = resSettings[k]
+      }
+      getTagMap()
+      event.emit('WEB_REFRESH')
+      return res
+    })
 }
 
-// 自有部署爬取信息
 export function spiderWeb(data?: any) {
   return http
     .post('/api/spider', data, {
@@ -106,7 +107,6 @@ export function spiderWeb(data?: any) {
     })
 }
 
-// 创建分支
 export async function createBranch(branch: string) {
   if (isSelfDevelop) {
     return
@@ -138,7 +138,6 @@ export async function createBranch(branch: string) {
   return http.post(url, params)
 }
 
-// 获取文件信息
 export function getFileContent(path: string, branch: string = DEFAULT_BRANCH) {
   return http.get(`/repos/${authorName}/${repoName}/contents/${path}`, {
     params: {
@@ -147,7 +146,6 @@ export function getFileContent(path: string, branch: string = DEFAULT_BRANCH) {
   })
 }
 
-// 更新文件内容
 type Iupdate = {
   message?: string
   content: string
@@ -314,6 +312,14 @@ export async function getScreenshot(data?: Record<string, any>) {
   return httpNav.post('/api/screenshot', data, {
     timeout: 0,
   })
+}
+
+export async function getConfigInfo(data: Record<string, any> = {}) {
+  return http.post('/api/config/get', data)
+}
+
+export async function updateConfigInfo(data: Record<string, any> = {}) {
+  return http.post('/api/config/update', data)
 }
 
 export function getCDN(path: string) {

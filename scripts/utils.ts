@@ -17,6 +17,8 @@ import {
   replaceJsdelivrCDN,
   removeTrailingSlashes,
 } from '../src/utils/pureUtils'
+import fs from 'node:fs'
+import yaml from 'js-yaml'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -32,6 +34,7 @@ export const TAG_ID_NAME3 = 'GitHub'
 export const PATHS = {
   upload: path.resolve('_upload', 'images'),
   db: path.resolve('data', 'db.json'),
+  serverdb: path.resolve('data', 'serverdb.json'),
   settings: path.resolve('data', 'settings.json'),
   tag: path.resolve('data', 'tag.json'),
   search: path.resolve('data', 'search.json'),
@@ -39,6 +42,7 @@ export const PATHS = {
   component: path.resolve('data', 'component.json'),
   internal: path.resolve('data', 'internal.json'),
   config: path.resolve('nav.config.yaml'),
+  configJson: path.resolve('nav.config.json'),
   pkg: path.resolve('package.json'),
   html: {
     index: path.resolve('dist', 'browser', 'index.html'),
@@ -46,6 +50,31 @@ export const PATHS = {
     write: path.resolve('src', 'index.html'),
   },
 } as const
+
+export const getConfig = () => {
+  const pkgJson = JSON.parse(fs.readFileSync(PATHS.pkg).toString())
+  const config = yaml.load(fs.readFileSync(PATHS.config).toString()) as Record<
+    string,
+    any
+  >
+
+  const gitRepoUrl = removeTrailingSlashes(config['gitRepoUrl'] || '').replace(
+    /\.git$/,
+    ''
+  )
+
+  return {
+    version: pkgJson.version,
+    gitRepoUrl,
+    imageRepoUrl: config['imageRepoUrl'],
+    branch: config['branch'],
+    hashMode: config['hashMode'],
+    address: config['address'],
+    email: config['email'],
+    port: config['port'],
+    datetime: dayjs.tz().format('YYYY-MM-DD HH:mm'),
+  } as const
+}
 
 interface WebCountResult {
   userViewCount: number
@@ -195,11 +224,7 @@ export function setWebs(
                 return aIdx - bIdx
               })
               for (let l = 0; l < navItemItem.nav.length; l++) {
-                let breadcrumb: string[] = []
                 const webItem = navItemItem.nav[l] as IWebProps
-                breadcrumb.push(item.title, navItem.title, navItemItem.title)
-                breadcrumb = breadcrumb.filter(Boolean)
-                webItem.breadcrumb = breadcrumb
                 webItem.id = incrementWebId(webItem.id)
                 if (webItem.rId) {
                   webItem.rId = incrementWebRId(webItem.rId)
@@ -220,22 +245,27 @@ export function setWebs(
                 webItem.name = webItem.name.trim().replace(/<b>|<\/b>/g, '')
                 webItem.desc = webItem.desc.trim().replace(/<b>|<\/b>/g, '')
 
-                delete webItem.__desc__
-                delete webItem.__name__
-                delete webItem['extra']
-                delete webItem['createdAt']
-
-                // 节省空间
-                !webItem.top && delete webItem.top
-                !webItem.ownVisible && delete webItem.ownVisible
-                webItem.index === '' && delete webItem.index
-                ;(webItem.topTypes ?? []).length === 0 &&
-                  delete webItem.topTypes
-
                 // 网站标签和系统标签关联
                 webItem.tags = webItem.tags.filter((item) => {
                   return tags.some((tag) => String(tag.id) === String(item.id))
                 })
+
+                delete webItem.__desc__
+                delete webItem.__name__
+                delete webItem['extra']
+                delete webItem['createdAt']
+                delete webItem.breadcrumb
+                if (webItem.tags.length === 0) {
+                  delete webItem.tags
+                }
+                if (!webItem.top) {
+                  delete webItem.top
+                  delete webItem.topTypes
+                }
+                !webItem.ownVisible && delete webItem.ownVisible
+                webItem.index === '' && delete webItem.index
+                ;(webItem.topTypes ?? []).length === 0 &&
+                  delete webItem.topTypes
               }
             }
           }
@@ -307,7 +337,7 @@ export function writeTemplate({
   <meta name="keywords" content="${settings.keywords}" id="xjh_2" />
   <link rel="icon" href="${settings.favicon}" />
   <link rel ="apple-touch-icon" href="${settings.favicon}" />
-  <link rel="prefetch" href="//unpkg.com/ng-zorro-antd@19.1.0/ng-zorro-antd.dark.min.css" />
+  <link rel="prefetch" href="//gcore.jsdelivr.net/npm/ng-zorro-antd@9.2.0/ng-zorro-antd.dark.min.css" />
 `.trim()
   let t = html
   t = t.replace(
@@ -355,6 +385,31 @@ interface WebInfoResponse {
   description?: string
 }
 
+function updateItemField(
+  item: IWebProps,
+  field: keyof IWebProps,
+  value: string | undefined,
+  settingKey: keyof ISettings,
+  settings: ISettings,
+  logMessage: string
+) {
+  if (settings[settingKey] === 'ALWAYS' && value) {
+    console.log(
+      `更新${logMessage}：${correctURL(item.url)}: "${
+        item[field]
+      }" => "${value}"`
+    )
+    item[field] = value
+  } else if (settings[settingKey] === 'EMPTY' && !item[field] && value) {
+    console.log(
+      `更新${logMessage}：${correctURL(item.url)}: "${
+        item[field]
+      }" => "${value}"`
+    )
+    item[field] = value
+  }
+}
+
 export async function spiderWeb(
   db: INavProps[],
   settings: ISettings
@@ -362,11 +417,10 @@ export async function spiderWeb(
   let errorUrlCount = 0
   const items: IWebProps[] = []
 
-  async function r(nav: any[]): Promise<void> {
+  const collectItems = (nav: any[]) => {
     if (!Array.isArray(nav)) return
 
-    for (let i = 0; i < nav.length; i++) {
-      const item = nav[i]
+    for (const item of nav) {
       if (item.url && item.url[0] !== '!') {
         delete item.ok
         if (
@@ -381,12 +435,12 @@ export async function spiderWeb(
           items.push(item)
         }
       } else {
-        r(item.nav)
+        collectItems(item.nav)
       }
     }
   }
 
-  await r(db)
+  collectItems(db)
 
   const max = settings.spiderQty ?? 20
   const count = Math.ceil(items.length / max)
@@ -400,95 +454,57 @@ export async function spiderWeb(
   }
 
   while (current < count) {
-    const requestPromises: Promise<any>[] = []
-    for (let i = current * max; i < current * max + max; i++) {
-      const item = items[i]
-      if (item) {
-        requestPromises.push(
-          getWebInfo(correctURL(item.url), {
-            timeout: settings.spiderTimeout * 1000,
-          })
-        )
-      }
-    }
+    const requestPromises = items
+      .slice(current * max, current * max + max)
+      .map((item) =>
+        getWebInfo(correctURL(item.url), {
+          timeout: settings.spiderTimeout * 1000,
+        })
+      )
 
     const promises = await Promise.all(requestPromises)
 
     for (let i = 0; i < promises.length; i++) {
       const idx = current * max + i
       const item = items[idx]
-      const res = promises[i].value as WebInfoResponse
+      const res = promises[i] as WebInfoResponse
+
       console.log(
         `${idx}：${
           res.status ? '正常' : `疑似异常: ${res.errorMsg}`
         } ${correctURL(item.url)}`
       )
-      if (settings.checkUrl) {
-        if (!res.status) {
-          errorUrlCount += 1
-          item.ok = false
-        }
+
+      if (settings.checkUrl && !res.status) {
+        errorUrlCount += 1
+        item.ok = false
       }
-      if (res.status) {
-        if (settings.spiderIcon === 'ALWAYS' && res.iconUrl) {
-          item.icon = res.iconUrl
-          console.log(
-            `更新图标：${correctURL(item.url)}: "${item.icon}" => "${
-              res.iconUrl
-            }"`
-          )
-        } else if (
-          settings.spiderIcon === 'EMPTY' &&
-          !item.icon &&
-          res.iconUrl
-        ) {
-          item.icon = res.iconUrl
-          console.log(
-            `更新图标：${correctURL(item.url)}: "${item.icon}" => "${
-              res.iconUrl
-            }"`
-          )
-        }
 
-        if (settings.spiderTitle === 'ALWAYS' && res.title) {
-          console.log(
-            `更新标题：${correctURL(item.url)}: "${item['title']}" => "${
-              res.title
-            }"`
-          )
-          item.name = res.title
-        } else if (
-          settings.spiderTitle === 'EMPTY' &&
-          !item.name &&
-          res.title
-        ) {
-          console.log(
-            `更新标题：${correctURL(item.url)}: "${item['title']}" => "${
-              res.title
-            }"`
-          )
-          item.name = res.title
-        }
-
-        if (settings.spiderDescription === 'ALWAYS' && res.description) {
-          console.log(
-            `更新描述：${correctURL(item.url)}: "${item.desc}" => "${
-              res.description
-            }"`
-          )
-          item.desc = res.description
-        } else if (
-          settings.spiderDescription === 'EMPTY' &&
-          !item.desc &&
-          res.description
-        ) {
-          console.log(
-            `更新描述：${correctURL(item.url)}: "${item.desc}" => "${
-              res.description
-            }"`
-          )
-          item.desc = res.description
-        }
+      if (res?.status) {
+        updateItemField(
+          item,
+          'icon',
+          res.iconUrl,
+          'spiderIcon',
+          settings,
+          '图标'
+        )
+        updateItemField(
+          item,
+          'name',
+          res.title,
+          'spiderTitle',
+          settings,
+          '标题'
+        )
+        updateItemField(
+          item,
+          'desc',
+          res.description,
+          'spiderDescription',
+          settings,
+          '描述'
+        )
       }
       console.log('-'.repeat(100))
     }
@@ -503,4 +519,85 @@ export async function spiderWeb(
     errorUrlCount,
     time: diff,
   }
+}
+
+export async function fileWriteStream(path: string, data: object | string) {
+  const strings = typeof data === 'string' ? data : JSON.stringify(data)
+  const CHUNK_SIZE = 1024 * 1024
+  const stream1 = fs.createWriteStream(path)
+
+  const stream1Promise = new Promise((resolve, reject) => {
+    stream1.on('finish', () => resolve('file1 written'))
+    stream1.on('error', (err) => reject(err))
+  })
+
+  const writeChunks = (stream: fs.WriteStream, data: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const totalLength = data.length
+      let position = 0
+
+      const writeNextChunk = () => {
+        if (position >= totalLength) {
+          stream.end()
+          resolve()
+          return
+        }
+
+        // 计算当前块的结束位置
+        const end = Math.min(position + CHUNK_SIZE, totalLength)
+        // 提取当前块
+        const chunk = data.slice(position, end)
+
+        // 写入当前块
+        const canContinue = stream.write(chunk, 'utf8')
+        position = end
+
+        // 如果流已满，等待'drain'事件后继续
+        if (!canContinue) {
+          stream.once('drain', writeNextChunk)
+        } else {
+          // 使用setImmediate避免调用栈溢出
+          setImmediate(writeNextChunk)
+        }
+      }
+
+      writeNextChunk()
+
+      stream.on('error', (err) => {
+        reject(err)
+      })
+    })
+  }
+
+  try {
+    await writeChunks(stream1, strings)
+    const results = await stream1Promise
+    return results
+  } catch (err) {
+    stream1.end()
+    console.log(`Failed to write files: ${(err as Error).message}`)
+    return err
+  }
+}
+
+export function fileReadStream(path: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(path)
+    let chunks: any[] = []
+
+    stream.on('data', (chunk) => {
+      chunks.push(chunk)
+    })
+
+    stream.on('end', () => {
+      const fullContent = Buffer.concat(chunks)
+      const data = fullContent.toString('utf8')
+      resolve(data)
+    })
+
+    stream.on('error', (err) => {
+      reject(err)
+      console.error('Error:', err)
+    })
+  })
 }

@@ -33,6 +33,8 @@ import { CreateWebComponent } from 'src/components/create-web/index.component'
 import { IconGitComponent } from 'src/components/icon-git/icon-git.component'
 import { EditClassComponent } from 'src/components/edit-class/index.component'
 import { $t } from 'src/locale'
+import { getAuthCode } from 'src/utils/user'
+import { DeleteModalComponent } from 'src/components/delete-modal/index.component'
 import event from 'src/utils/mitt'
 
 @Component({
@@ -45,13 +47,14 @@ import event from 'src/utils/mitt'
     CommonModule,
     MoveWebComponent,
     CreateWebComponent,
+    DeleteModalComponent,
   ],
   selector: 'app-xiejiahe',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-  isLogin: boolean = isLogin
+  readonly isLogin: boolean = isLogin
   fetchIng = true
 
   constructor(
@@ -63,7 +66,7 @@ export class AppComponent {
     private modal: NzModalService
   ) {
     this.registerEvents()
-
+    this.registerKeyboard()
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.updateDocumentTitle()
@@ -179,7 +182,7 @@ export class AppComponent {
   }
 
   private getCollectCount() {
-    if (isLogin && getPermissions(settings).ok) {
+    if (isLogin && getAuthCode() && getPermissions(settings).ok) {
       getUserCollectCount().then((res) => {
         const count = res.data.count
         if (count > 0) {
@@ -207,5 +210,30 @@ export class AppComponent {
         this.router.navigate([path], { queryParams })
       }
     }
+  }
+
+  private registerKeyboard() {
+    document.addEventListener('keyup', (e) => {
+      const createWebKey = settings.createWebKey.toLowerCase()
+      if (!createWebKey) {
+        return
+      }
+      const activeElement = document.activeElement
+      if (activeElement) {
+        if (
+          activeElement.nodeName === 'INPUT' ||
+          activeElement.nodeName === 'TEXTAREA'
+        ) {
+          return
+        }
+      }
+
+      const key = e.key.toLowerCase()
+      if (key === createWebKey) {
+        event.emit('CREATE_WEB', {
+          isKeyboard: true,
+        })
+      }
+    })
   }
 }

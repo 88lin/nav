@@ -90,7 +90,11 @@
   <nz-form-item>
     <nz-form-label [nzSpan]="4">Email</nz-form-label>
     <nz-form-control [nzSpan]="10">
-      <input nz-input formControlName="email" placeholder="用户提交收录通知" />
+      <input
+        nz-input
+        formControlName="email"
+        [placeholder]="$t('_submitNotice')"
+      />
     </nz-form-control>
   </nz-form-item>
 
@@ -274,6 +278,18 @@
         <label nz-radio nzValue="Side">Side</label>
         <label nz-radio nzValue="Shortcut">Shortcut</label>
       </nz-radio-group>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label [nzSpan]="4">{{ $t('_createWebKey') }}</nz-form-label>
+    <nz-form-control [nzSpan]="10">
+      <input
+        nz-input
+        formControlName="createWebKey"
+        maxlength="1"
+        class="max-w-10"
+      />
     </nz-form-control>
   </nz-form-item>
 

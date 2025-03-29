@@ -295,6 +295,14 @@ const zhCN: Record<string, any> = {
   _poster: '海报',
   _screenshot: '截图',
   _imgPlaceholder: '应用在海报卡片',
+  _urlNoRepeat: '该分类下链接未查出重复',
+  _confInfo: '配置信息',
+  _submitNotice: '收录通知',
+  _password: '密码',
+  _address: '地址',
+  _apiPass: '讯飞大模型密钥',
+  _createWebKey: '按下创建网站',
+  _onlyDelItem: '只删除该项目',
 }
 
 export default zhCN

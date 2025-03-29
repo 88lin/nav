@@ -3,12 +3,10 @@
 // See https://github.com/xjh22222228/nav
 
 import fs from 'fs'
-import path from 'path'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
 import defaultDb from './db'
-import yaml from 'js-yaml'
 import LZString from 'lz-string'
 import {
   TAG_ID1,
@@ -20,6 +18,8 @@ import {
   getWebCount,
   setWebs,
   PATHS,
+  getConfig,
+  fileWriteStream,
 } from './utils'
 import { replaceJsdelivrCDN } from '../src/utils/pureUtils'
 import type {
@@ -33,48 +33,30 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.tz.setDefault('Asia/Shanghai')
 
-const initConfig = () => {
-  const pkgJson = JSON.parse(fs.readFileSync(PATHS.pkg).toString())
-  const config = yaml.load(fs.readFileSync(PATHS.config).toString()) as Record<
-    string,
-    any
-  >
-
-  return {
-    version: pkgJson.version,
-    gitRepoUrl: config['gitRepoUrl'],
-    imageRepoUrl: config['imageRepoUrl'],
-    branch: config['branch'],
-    hashMode: config['hashMode'],
-    address: config['address'],
-    email: config['email'],
-    port: config['port'],
-    datetime: dayjs.tz().format('YYYY-MM-DD HH:mm'),
-  } as const
-}
-
-const readDb = (): INavProps[] => {
+const getWebs = (): INavProps[] => {
   try {
     const strings = fs.readFileSync(PATHS.db).toString().trim()
     if (!strings) throw new Error('empty')
+
+    try {
+      const serverdb = fs.readFileSync(PATHS.serverdb).toString().trim()
+      return JSON.parse(serverdb)
+    } catch {}
 
     return strings[0] === '['
       ? JSON.parse(strings)
       : JSON.parse(LZString.decompressFromBase64(strings)) ||
           JSON.parse(LZString.decompressFromBase64(defaultDb))
-  } catch (e) {
+  } catch {
     return JSON.parse(LZString.decompressFromBase64(defaultDb))
   }
 }
 
 const main = async () => {
-  const configJson = initConfig()
-  fs.writeFileSync(
-    path.join('.', 'nav.config.json'),
-    JSON.stringify(configJson)
-  )
+  const configJson = getConfig()
+  fs.writeFileSync(PATHS.configJson, JSON.stringify(configJson))
 
-  const db = readDb()
+  const db = getWebs()
   let internal = {} as InternalProps
   let settings = {} as ISettings
   let tags: ITagPropValues[] = []
@@ -86,7 +68,9 @@ const main = async () => {
     settings = JSON.parse(fs.readFileSync(PATHS.settings).toString())
     tags = JSON.parse(fs.readFileSync(PATHS.tag).toString())
     search = JSON.parse(fs.readFileSync(PATHS.search).toString())
-  } catch {}
+  } catch (e: any) {
+    console.log(e.message)
+  }
 
   try {
     components = JSON.parse(fs.readFileSync(PATHS.component).toString())
@@ -354,6 +338,7 @@ const main = async () => {
     settings.actionUrl ??= ''
     settings.appTheme ??= 'App'
     settings.openSEO ??= !configJson.address
+    settings.createWebKey ??= 'E'
     settings.headerContent ??= ''
     settings.footerContent ??= `
 <div class="dark-white">
@@ -487,7 +472,12 @@ const main = async () => {
   internal.loginViewCount = loginViewCount
 
   fs.writeFileSync(PATHS.internal, JSON.stringify(internal))
-  fs.writeFileSync(PATHS.db, JSON.stringify(setWebs(db, settings, tags)))
+
+  const webs = setWebs(db, settings, tags)
+  await fileWriteStream(PATHS.db, webs)
+  if (configJson.address) {
+    await fileWriteStream(PATHS.serverdb, webs)
+  }
 }
 
 main().catch(console.error)

@@ -308,6 +308,14 @@ const english: Record<string, any> = {
   _poster: 'Poster',
   _screenshot: 'Screenshot',
   _imgPlaceholder: 'Applied to poster cards',
+  _urlNoRepeat: 'No duplicate links were found in this category',
+  _confInfo: 'Config info',
+  _submitNotice: 'Submit notice',
+  _password: 'Password',
+  _address: 'Address',
+  _apiPass: '讯飞大模型密钥',
+  _createWebKey: 'Press to create website',
+  _onlyDelItem: 'Only delete this item',
 }
 
 export default english

@@ -44,6 +44,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button'
 import { NzSelectModule } from 'ng-zorro-antd/select'
 import { SELF_SYMBOL } from 'src/constants/symbol'
 import { JumpService } from 'src/services/jump'
+import { removeTrailingSlashes } from 'src/utils/pureUtils'
 import event from 'src/utils/mitt'
 
 @Component({
@@ -84,12 +85,13 @@ export class CreateWebComponent {
   showModal = false
   detail: IWebProps | null | undefined = null
   isMove = false // 提交完是否可以移动
-  parentId = -1
+  parentId: number = -1
   callback: Function = () => {}
   topOptions = [
-    { label: TopType[1], value: TopType.Side, checked: false },
-    { label: TopType[2], value: TopType.Shortcut, checked: false },
+    { label: TopType[1], value: TopType.Side },
+    { label: TopType[2], value: TopType.Shortcut },
   ]
+  breadcrumb: string[] = []
 
   constructor(
     public readonly jumpService: JumpService,
@@ -111,7 +113,7 @@ export class CreateWebComponent {
       title: ['', [Validators.required]],
       url: ['', [Validators.required]],
       top: [false],
-      topOptions: [this.topOptions],
+      topTypes: [[]],
       ownVisible: [false],
       rate: [5],
       icon: [''],
@@ -120,6 +122,13 @@ export class CreateWebComponent {
       img: [''],
       urlArr: this.fb.array([]),
     })
+  }
+
+  get modalTitle(): string {
+    const breadcrumb = (this.detail?.breadcrumb || this.breadcrumb).join(' / ')
+    return this.detail
+      ? `${$t('_edit')}（${breadcrumb}）`
+      : `${$t('_add')}（${breadcrumb}）`
   }
 
   get urlArray(): FormArray {
@@ -149,15 +158,30 @@ export class CreateWebComponent {
   open(
     ctx: this,
     props?: {
+      isKeyboard?: boolean
       isMove?: boolean
       parentId?: number
       detail: IWebProps | null | undefined
     }
   ) {
+    if (props?.isKeyboard && this.showModal) {
+      return
+    }
+
     const detail = props?.detail
+    if (!detail) {
+      ctx.parentId = props?.parentId || ctx.parentId
+      if (websiteList.length === 0) return
+      if (ctx.parentId === -1) {
+        const parentId = websiteList[0]?.nav?.[0]?.nav?.[0]?.id
+        if (!parentId) {
+          return
+        }
+        ctx.parentId = parentId
+      }
+    }
     ctx.detail = detail
     ctx.showModal = true
-    ctx.parentId = props?.parentId ?? -1
     ctx.isMove = !!props?.isMove
     this.validateForm.get('title')!.setValue(getTextContent(detail?.name))
     this.validateForm.get('desc')!.setValue(getTextContent(detail?.desc))
@@ -165,6 +189,7 @@ export class CreateWebComponent {
     this.validateForm.get('icon')!.setValue(detail?.icon || '')
     this.validateForm.get('url')!.setValue(detail?.url || '')
     this.validateForm.get('top')!.setValue(detail?.top ?? false)
+    this.validateForm.get('topTypes')!.setValue(detail?.topTypes ?? [])
     this.validateForm.get('ownVisible')!.setValue(detail?.ownVisible ?? false)
     this.validateForm.get('rate')!.setValue(detail?.rate ?? 5)
     this.validateForm.get('img')!.setValue(detail?.img ?? '')
@@ -181,17 +206,15 @@ export class CreateWebComponent {
         })
       }
     }
-    const topOptions = this.topOptions.map((item) => {
-      item.checked = false
-      type V = typeof item.value
-      if (detail?.topTypes) {
-        const checked = detail.topTypes.some((value: V) => value === item.value)
-        item.checked = checked
-      }
-      return item
-    })
 
-    this.validateForm.get('topOptions')!.setValue(topOptions)
+    if (detail) {
+      const { parentId } = getClassById(detail.id, 0, true)
+      ctx.parentId = parentId
+    } else {
+      const { breadcrumb } = getClassById(ctx.parentId)
+      ctx.breadcrumb = breadcrumb
+    }
+
     this.focusUrl()
   }
 
@@ -209,9 +232,7 @@ export class CreateWebComponent {
     this.validateForm.get('urlArr').controls = []
     this.validateForm.reset()
     this.showModal = false
-    this.detail = null
     this.submitting = false
-    this.isMove = false
     this.callback = Function
   }
 
@@ -322,12 +343,17 @@ export class CreateWebComponent {
 
   checkRepeat() {
     try {
-      const { url } = this.validateForm.value
+      let { url } = this.validateForm.value
+      url = removeTrailingSlashes(url.trim())
+
       const { oneIndex, twoIndex, threeIndex, breadcrumb } = getClassById(
         this.parentId
       )
       const w = websiteList[oneIndex].nav[twoIndex].nav[threeIndex].nav
       const repeatData = w.find((item) => {
+        if (this.detail && item.id === this.detail.id) {
+          return false
+        }
         return item.url === url || item.url.includes(url)
       })
       if (repeatData) {
@@ -344,7 +370,7 @@ export class CreateWebComponent {
           }
         )
       } else {
-        this.message.success('OK')
+        this.message.success($t('_urlNoRepeat'))
       }
     } catch {}
   }
@@ -356,8 +382,9 @@ export class CreateWebComponent {
     }
 
     const tags: IWebTag[] = []
-    let { url, top, ownVisible, rate, index, topOptions } =
+    let { url, top, ownVisible, rate, index, topTypes } =
       this.validateForm.value
+    url = url.trim()
     const title = this.title
     if (!title || !url) return
 
@@ -370,11 +397,6 @@ export class CreateWebComponent {
         })
       }
     })
-
-    type TopTypes = typeof this.topOptions
-    const topTypes: number[] = (topOptions as TopTypes)
-      .filter((item) => item.checked)
-      .map((item) => item.value)
 
     const payload: Record<string, any> = {
       id: this.detail?.id,
@@ -416,22 +438,23 @@ export class CreateWebComponent {
     } else {
       payload['id'] = getTempId()
       try {
-        const { breadcrumb } = getClassById(this.parentId)
         this.submitting = true
+        payload['breadcrumb'] = this.breadcrumb
         if (this.isLogin) {
           const ok = pushDataByAny(this.parentId, payload)
-          ok && this.message.success($t('_addSuccess'))
-          if (this.isMove) {
-            event.emit('MOVE_WEB', {
-              data: [payload],
-            })
+          if (ok) {
+            this.message.success($t('_addSuccess'))
+            if (this.isMove) {
+              event.emit('MOVE_WEB', {
+                data: [payload],
+              })
+            }
           }
         } else if (this.permissions.create) {
           const params = {
             data: {
               ...payload,
               parentId: this.parentId,
-              breadcrumb,
               extra: {
                 type: ActionType.Create,
               },
