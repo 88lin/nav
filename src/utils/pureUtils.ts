@@ -5,7 +5,7 @@ import type { ISettings, IWebProps, INavProps } from '../types'
 
 export function replaceJsdelivrCDN(
   url: string = '',
-  settings: ISettings
+  settings: ISettings,
 ): string {
   const cdn = settings?.gitHubCDN
   if (!cdn) {
@@ -22,6 +22,10 @@ export function getIsGitee(gitRepoUrl: string): boolean {
   return gitRepoUrl.includes('gitee.com')
 }
 
+export function getIsGitLab(gitRepoUrl: string): boolean {
+  return gitRepoUrl.includes('gitlab.c')
+}
+
 export function removeTrailingSlashes(url: string | null | undefined): string {
   if (!url) {
     return ''
@@ -29,19 +33,16 @@ export function removeTrailingSlashes(url: string | null | undefined): string {
   return url.replace(/\/+$/, '')
 }
 
-export function filterLoginData(
-  websiteList: any[],
-  isLogin: boolean
-): INavProps[] {
+export function filterLoginData(navs: any[], isLogin: boolean): INavProps[] {
   function filterOwn(item: INavProps) {
     if (item.ownVisible && !isLogin) {
       return false
     }
     return true
   }
-  websiteList = websiteList.filter(filterOwn)
-  for (let i = 0; i < websiteList.length; i++) {
-    const item = websiteList[i]
+  navs = navs.filter(filterOwn)
+  for (let i = 0; i < navs.length; i++) {
+    const item = navs[i]
     if (Array.isArray(item.nav)) {
       item.nav = item.nav.filter(filterOwn)
       for (let j = 0; j < item.nav.length; j++) {
@@ -64,7 +65,7 @@ export function filterLoginData(
     }
   }
 
-  return websiteList
+  return navs
 }
 
 export function cleanWebAttrs(data: any) {
@@ -74,10 +75,13 @@ export function cleanWebAttrs(data: any) {
   data.forEach((item) => {
     if (item.url) {
       for (const k in item) {
-        const removeKeys = ['breadcrumb', 'tags', '__name__', '__desc__']
+        const removeKeys = ['breadcrumb', '__name__', '__desc__']
         if (removeKeys.includes(k)) {
           delete item[k]
         }
+      }
+      if (item.tags?.length === 0) {
+        delete item.tags
       }
     }
     if (Array.isArray(item.nav)) {
@@ -86,4 +90,30 @@ export function cleanWebAttrs(data: any) {
   })
 
   return data
+}
+
+export function isNumber(v: any): boolean {
+  if (v === '' || v == null) {
+    return false
+  }
+  if (isNaN(v)) {
+    return false
+  }
+  return true
+}
+
+export function transformSafeHTML(str: string) {
+  const entity: any = {
+    '<': '&lt;',
+    '>': '&gt;',
+  }
+  return str.replace(/[<>]/g, (char) => entity[char])
+}
+
+export function transformUnSafeHTML(str: string) {
+  const entity: any = {
+    '&lt;': '<',
+    '&gt;': '>',
+  }
+  return str.replace(/(&lt;|&gt;)/g, (char) => entity[char])
 }

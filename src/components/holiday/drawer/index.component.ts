@@ -33,7 +33,7 @@ import dayjs from 'dayjs'
 export class HolidayDrawerComponent {
   @Output() ok = new EventEmitter<void>()
 
-  $t = $t
+  readonly $t = $t
   visible = false
   validateForm!: FormGroup
   index = 0
@@ -58,7 +58,7 @@ export class HolidayDrawerComponent {
             day: String(item.day),
             title: item.title,
             date: item.date,
-          })
+          }),
         )
       })
     }
@@ -72,7 +72,7 @@ export class HolidayDrawerComponent {
         url: '',
         title: '',
         date: Date.now(),
-      })
+      }),
     )
   }
 

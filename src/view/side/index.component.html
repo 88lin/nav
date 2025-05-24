@@ -1,8 +1,8 @@
-<nz-layout class="layout">
+<nz-layout class="layout" [class.showSidebar]="openSidebar">
   <nz-spin
     nzSimple
     *ngIf="commonService.sliceMax === 0"
-    class="position-center z-50 mt-24"
+    class="position-center !z-50 mt-24"
   />
   <nz-layout>
     <nz-sider
@@ -11,22 +11,53 @@
       [(nzCollapsed)]="isCollapsed"
       [nzTrigger]="null"
     >
-      <div class="logo dark-bg" (click)="handleCollapsed()">
-        <img [src]="commonService.settings.favicon" class="logo-img" />
-        <span class="web-title" *ngIf="!isCollapsed">{{
-          commonService.settings.sideTitle || commonService.title
-        }}</span>
+      <div class="mobile-collapse flex md:hidden" (click)="toggleSidebar()">
+        <nz-icon
+          *ngIf="!openSidebar"
+          nzType="double-right"
+          nzTheme="outline"
+          class="text-base !text-gray-500"
+        />
+        <nz-icon
+          *ngIf="openSidebar"
+          nzType="double-left"
+          nzTheme="outline"
+          class="text-base !text-gray-500"
+        />
+      </div>
+
+      <div
+        class="logo dark-bg dark-border-color2 pointer-events-none md:pointer-events-auto"
+        (click)="handleCollapsed()"
+      >
+        <ng-content *ngIf="logoImage; else noLogo">
+          <img
+            [src]="commonService.settings().favicon"
+            class="logo-img"
+            *ngIf="isCollapsed; else noCollased"
+          />
+          <ng-template #noCollased>
+            <img class="pointer-events-none" [src]="logoImage" />
+          </ng-template>
+        </ng-content>
+
+        <ng-template #noLogo>
+          <img [src]="commonService.settings().favicon" class="logo-img" />
+          <span class="web-title" *ngIf="!isCollapsed">{{
+            commonService.settings().sideTitle || commonService.title()
+          }}</span>
+        </ng-template>
       </div>
 
       <ul
         nz-menu
         nzMode="inline"
-        class="sider dark-scrollbar dark-bg select-none"
+        class="sider dark-bg select-none auto-scrollbar"
       >
         <li
           nz-submenu
           *ngFor="
-            let item of commonService.websiteList;
+            let item of commonService.navs();
             index as pageIdx;
             trackBy: commonService.trackByItem
           "
@@ -35,13 +66,20 @@
           [nzOpen]="item.id === menuOpenId"
         >
           <ng-template #titleTpl>
-            <img *ngIf="item.icon" class="sideicon" [src]="item.icon" />
+            <app-logo
+              *ngIf="item.icon"
+              [src]="item.icon"
+              class="mr-2.5 flex-center sideicon"
+              [size]="25"
+              [radius]="0"
+              [name]="item.title"
+            />
             <span class="menu-title ellipsis">{{
               isCollapsed && item.icon
                 ? ''
                 : isCollapsed && !item.icon
-                ? item.title.slice(0, 4)
-                : item.title
+                  ? item.title
+                  : item.title
             }}</span>
           </ng-template>
 
@@ -57,9 +95,16 @@
                 commonService.oneIndex === pageIdx &&
                 commonService.twoIndex === idIdx
               "
-              (click)="commonService.handleClickClass(el.id)"
+              (click)="onClickNav(el)"
             >
-              <img *ngIf="el.icon" class="sideicon fixicon" [src]="el.icon" />
+              <app-logo
+                *ngIf="el.icon"
+                [src]="el.icon"
+                class="mr-2 flex-center"
+                [size]="25"
+                [radius]="0"
+                [name]="el.title"
+              />
               <span class="ellipsis">{{ el.title }}</span>
 
               <div
@@ -71,6 +116,7 @@
                 class="collapse-wrapper"
               >
                 <i
+                  *ngIf="!isCollapsed"
                   class="iconfont iconweibiaoti25 collapseIcon"
                   [class.active]="commonService.collapsed"
                 >
@@ -82,25 +128,31 @@
       </ul>
     </nz-sider>
 
-    <nz-layout class="inner-layout">
+    <nz-layout class="inner-layout dark-bg">
       <div
-        class="search-header"
-        *ngIf="commonService.settings.sideThemeImages.length > 0"
-      >
-        <app-swiper
-          [images]="commonService.settings.sideThemeImages"
-          [autoplay]="commonService.settings.sideThemeAutoplay"
-          [height]="commonService.settings.sideThemeHeight"
-        />
+        *ngIf="openSidebar"
+        class="mask"
+        (click)="toggleSidebar(false)"
+      ></div>
+      <app-swiper
+        *ngIf="commonService.settings().sideThemeImages.length > 0"
+        [images]="commonService.settings().sideThemeImages"
+        [autoplay]="commonService.settings().sideThemeAutoplay"
+        [height]="commonService.settings().sideThemeHeight"
+      />
+      <app-search />
+      <component-group />
+      <div class="px-2.5">
+        <app-web-list [search]="false" [overflow]="true" [iconSize]="35" />
       </div>
 
-      <component-group></component-group>
-
-      <app-search class="mobile-search" />
-
       <nz-content class="content" id="content">
-        <app-web-list [search]="false" [overflow]="true" />
-
+        <div
+          class="sticky top-0 left-0 z-10"
+          *ngIf="commonService.currentList.length > 1"
+        >
+          <app-class-tabs [data]="commonService.currentList" />
+        </div>
         <div class="box">
           <div *ngIf="commonService.currentList.length > 0; else noData">
             <div
@@ -120,12 +172,15 @@
                 />
 
                 <div
-                  class="grid gap-x-4 gap-y-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4"
                   [class.hidden]="item['collapsed']"
                   [ngClass]="{
+                    'grid gap-x-4 gap-y-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4':
+                      commonService.settings().sideCardStyle !== 'icon',
+                    'flex flex-wrap gap-x-6 gap-y-4':
+                      commonService.settings().sideCardStyle === 'icon',
                     '2xl:grid-cols-6':
-                      commonService.settings.sideCardStyle === 'original' ||
-                      commonService.settings.sideCardStyle === 'example'
+                      commonService.settings().sideCardStyle === 'original' ||
+                      commonService.settings().sideCardStyle === 'example',
                   }"
                 >
                   <app-card
@@ -133,7 +188,7 @@
                       let el of item.nav;
                       trackBy: commonService.trackByItemWeb
                     "
-                    [cardStyle]="commonService.settings.sideCardStyle"
+                    [cardStyle]="commonService.settings().sideCardStyle"
                     [dataSource]="el"
                     class="column-border"
                   />
@@ -150,7 +205,7 @@
 
       <app-footer
         className="side-footer"
-        [content]="commonService.settings.sideFooterHTML"
+        [content]="commonService.settings().sideFooterHTML"
       />
     </nz-layout>
   </nz-layout>

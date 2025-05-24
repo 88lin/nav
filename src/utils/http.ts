@@ -9,19 +9,42 @@ import event from './mitt'
 import { settings } from 'src/store'
 import { getToken, getAuthCode, removeAuthCode } from '../utils/user'
 import { isLogin } from 'src/utils/user'
-import { getIsGitee } from 'src/utils/pureUtils'
+import { getIsGitee, getIsGitLab } from 'src/utils/pureUtils'
 
-function getAddress(): string {
+export function getAddress(): string {
   return globalThis.__ADDRESS__ || config.address || ''
+}
+
+const isGitLab = getIsGitLab(config.gitRepoUrl)
+const gitLabBaseURL = 'https://gitlab.com/api/v4'
+const giteeBaseURL = 'https://gitee.com/api/v5'
+const gitHubBaseURL = 'https://api.github.com'
+
+function getBaseUrl() {
+  const address = getAddress()
+  if (address) {
+    return address
+  }
+  if (isGitLab) {
+    return gitLabBaseURL
+  } else if (getIsGitee(config.gitRepoUrl)) {
+    return giteeBaseURL
+  }
+  return gitHubBaseURL
+}
+
+export function getImageBaseUrl() {
+  if (getIsGitLab(config.imageRepoUrl)) {
+    return gitLabBaseURL
+  } else if (getIsGitee(config.imageRepoUrl)) {
+    return giteeBaseURL
+  }
+  return gitHubBaseURL
 }
 
 const httpInstance = axios.create({
   timeout: 60000 * 3,
-  baseURL:
-    getAddress() ||
-    (getIsGitee(config.gitRepoUrl)
-      ? 'https://gitee.com/api/v5'
-      : 'https://api.github.com'),
+  baseURL: getBaseUrl(),
 })
 
 function startLoad() {
@@ -36,7 +59,9 @@ httpInstance.interceptors.request.use(
   function (config) {
     const token = getToken()
     if (token) {
-      config.headers['Authorization'] = `token ${token}`
+      config.headers['Authorization'] ||= `${
+        isGitLab ? 'Bearer' : 'token'
+      } ${token}`
     }
     startLoad()
     return config
@@ -44,7 +69,7 @@ httpInstance.interceptors.request.use(
   function (error) {
     stopLoad()
     return Promise.reject(error)
-  }
+  },
 )
 
 httpInstance.interceptors.response.use(
@@ -61,12 +86,12 @@ httpInstance.interceptors.response.use(
       title: 'Error：' + status,
       content: errorMsg,
       config: {
-        nzDuration: 20000,
+        nzDuration: document.hidden ? 0 : 5000,
       },
     })
     stopLoad()
     return Promise.reject(error)
-  }
+  },
 )
 
 export const HTTP_BASE_URL = 'https://api.nav3.cn'
@@ -78,6 +103,7 @@ const httpNavInstance = axios.create({
 
 export function getDefaultRequestData(data?: any) {
   const code = getAuthCode()
+  const { email, language } = settings()
   return {
     code,
     hostname: location.hostname,
@@ -86,8 +112,8 @@ export function getDefaultRequestData(data?: any) {
     isLogin,
     ...config,
     ...data,
-    email: settings.email,
-    language: settings.language,
+    email,
+    language,
   } as const
 }
 
@@ -98,14 +124,16 @@ httpNavInstance.interceptors.request.use(
       conf.headers['Authorization'] = data.code
     }
     conf.data = getDefaultRequestData(conf.data)
-    startLoad()
+    if (conf.data['showLoading'] !== false) {
+      startLoad()
+    }
 
     return conf
   },
   function (error) {
     stopLoad()
     return Promise.reject(error)
-  }
+  },
 )
 
 httpNavInstance.interceptors.response.use(
@@ -134,14 +162,14 @@ httpNavInstance.interceptors.response.use(
         title: 'Error：' + status,
         content: errorMsg,
         config: {
-          nzDuration: 20000,
+          nzDuration: document.hidden ? 0 : 5000,
         },
       })
     }
 
     stopLoad()
     return Promise.reject(error)
-  }
+  },
 )
 
 export const httpNav = httpNavInstance
